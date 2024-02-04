@@ -1,118 +1,66 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, {useState, useEffect} from 'react';
+import {FlatList, SafeAreaView, Text, View, Pressable} from 'react-native';
+import {EmptyData, URL} from './src/constants.ts';
+import {styles} from './src/styles';
+import {CollapseView} from './src/components/CollapseView.tsx';
+import {syncPortfolioMetrics} from './src/utils.ts';
+import {renderHoldingItem} from './src/components/HoldingItem.tsx';
+import Loader from './src/components/Loader.tsx';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const App = () => {
+  const [data, setData] = useState(EmptyData);
+  const [loading, toggleLoading] = useState(false);
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  //fetch data from remote
+  useEffect(() => {
+    toggleLoading(!loading);
+    fetch(URL)
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        }
+        return Promise.reject(response);
+      })
+      .then(response => syncPortfolioMetrics(response, setData))
+      .catch(err => console.log('error in data fetch', err))
+      .finally(() => {
+        toggleLoading(!loading);
+      });
+  }, []);
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={[styles.title, {color: 'white'}]}>Upstox Holding</Text>
+      </View>
+      {data.userHolding.length === 0 && <Loader />}
+      <FlatList
+        data={data.userHolding}
+        renderItem={renderHoldingItem}
+        keyExtractor={(item: {id: any}) => item.id}
+        style={styles.flatList}
+        extraData={data.userHolding}
       />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+      <CollapseView>
+        <View style={styles.item}>
+          <Text style={styles.title}>Current Value:</Text>
+          <Text>₹ {data.totalCurrentValue?.toFixed(2)} </Text>
         </View>
-      </ScrollView>
+        <View style={styles.item}>
+          <Text style={styles.title}>Total Investment: </Text>
+          <Text>₹ {data.totalInvestment?.toFixed(2)} </Text>
+        </View>
+        <View style={styles.item}>
+          <Text style={styles.title}>Today's Profit & Loss: </Text>
+          <Text>₹ {data.todaysPnl?.toFixed(2)} </Text>
+        </View>
+      </CollapseView>
+      <Pressable style={[styles.item]}>
+        <Text style={styles.title}>Profit & Loss: </Text>
+        <Text>₹ {data.totalPnl?.toFixed(2)} </Text>
+      </Pressable>
     </SafeAreaView>
   );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+};
 
 export default App;
